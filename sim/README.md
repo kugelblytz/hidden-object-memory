@@ -49,10 +49,15 @@ default GPU render backend crashes (rendering still runs on the GPU via Vulkan).
 ## Run
 
 ```powershell
-.venv\Scripts\python.exe run_pilot.py --out out/pilot --seed 1000 --per-cell 1
+.venv\Scripts\python.exe run_pilot.py --split pilot --per-cell 5 --gif
+.venv\Scripts\python.exe run_pilot.py --split test --per-cell 30 --protocol-frozen
 ```
 
-About 4–6 s and 21 MB per trial on the laptop above.
+Pilot seeds start at 10,000 and test seeds at 1,000,000, so pilot recordings can
+never end up in the test set; test recordings require `--protocol-frozen`. `--gif`
+writes a labelled `recording.gif` per trial for visual inspection, and a per-cell
+summary (resampled/invalid trials, smallest visible cover, motion range) is printed
+and saved to `summary.json`. About 4–6 s and 21 MB per trial on the laptop above.
 
 ## Files
 

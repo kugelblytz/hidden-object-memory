@@ -79,30 +79,31 @@ def sample_trial(trial_id: int, seed: int, scene_id: int, appearance: str, motio
     else:
         colour_names = [names[i] for i in rng.choice(len(names), 3, replace=False)]
 
-    for _ in range(max_tries):  # three cover slots with a minimum spacing
-        slots = np.column_stack([rng.uniform(*SLOT_X, 3), rng.uniform(*SLOT_Y, 3)])
-        if min(np.linalg.norm(slots[i] - slots[j]) for i in range(3) for j in range(i + 1, 3)) >= MIN_COVER_SPACING:
-            break
-    else:
-        raise RuntimeError("could not sample cover slots")
-
     target = int(rng.integers(3))
     cam0 = {"az": float(rng.uniform(*CAM_AZ0)), "el": float(rng.uniform(*CAM_EL)), "r": float(rng.uniform(*CAM_R))}
-
     # The target cover approaches the ball from the side facing away from the camera.
     away = -camera_eye(cam0["az"], cam0["el"], cam0["r"])[:2]
     away /= np.linalg.norm(away)
-    others = [slots[i] for i in range(3) if i != target]
+
+    # Three cover slots with a minimum spacing and a free approach path for the target
+    # cover; layouts without such a path are redrawn.
     for _ in range(max_tries):
-        ang = np.deg2rad(rng.uniform(-60, 60))
-        rot = np.array([[np.cos(ang), -np.sin(ang)], [np.sin(ang), np.cos(ang)]])
-        start = slots[target] + APPROACH_DIST * (rot @ away)
-        if _in_box(start, TABLE_X, TABLE_Y) and all(
-            _dist_point_segment(o, start, slots[target]) >= MIN_CLEARANCE for o in others
-        ):
-            break
+        slots = np.column_stack([rng.uniform(*SLOT_X, 3), rng.uniform(*SLOT_Y, 3)])
+        if min(np.linalg.norm(slots[i] - slots[j]) for i in range(3) for j in range(i + 1, 3)) < MIN_COVER_SPACING:
+            continue
+        others = [slots[i] for i in range(3) if i != target]
+        for ang in np.deg2rad(rng.permutation(np.arange(-90, 91, 15))):
+            rot = np.array([[np.cos(ang), -np.sin(ang)], [np.sin(ang), np.cos(ang)]])
+            start = slots[target] + APPROACH_DIST * (rot @ away)
+            if _in_box(start, TABLE_X, TABLE_Y) and all(
+                _dist_point_segment(o, start, slots[target]) >= MIN_CLEARANCE for o in others
+            ):
+                break
+        else:
+            continue
+        break
     else:
-        raise RuntimeError("could not sample an approach path")
+        raise RuntimeError("could not sample cover slots with a free approach path")
 
     distractors = []
     n_distr = int(rng.integers(1, 3))
