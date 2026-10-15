@@ -42,8 +42,9 @@ MIN_CLEARANCE = 0.15
 APPROACH_DIST = 0.16
 LOOK_AT = np.array([0.0, 0.0, 0.03])
 CAM_AZ0, CAM_EL, CAM_R = (-20.0, 20.0), (30.0, 45.0), (0.95, 1.10)
-CAM_DELTA = (10.0, 60.0)
-COVER_SHIFT = (0.05, 0.15)
+CAM_DELTA = (10.0, 150.0)   # beyond ~90 deg the left/right order of the covers flips
+CAM_AZ_LIMIT = 150.0        # larger |azimuth| would look from behind the parked robot
+COVER_SHIFT = (0.10, 0.35)  # long enough that the moved cover changes its left/right order
 SWEEP_FRAMES, SWEEP_HALF_ARC, SWEEP_EL_WOBBLE = 10, 10.0, 3.0
 LIFT = 0.13
 EP1_PHASES = {"hold_start": 4, "lift": 5, "carry": 8, "lower": 5, "hold_end": 4}
@@ -120,23 +121,34 @@ def sample_trial(trial_id: int, seed: int, scene_id: int, appearance: str, motio
     change = {"type": motion}
     if motion == "camera":
         delta = float(rng.uniform(*CAM_DELTA) * rng.choice([-1.0, 1.0]))
+        if abs(cam0["az"] + delta) > CAM_AZ_LIMIT:
+            delta = -delta
         cam1["az"] = cam0["az"] + delta
         change.update({"delta_az_deg": delta, "magnitude": abs(delta)})
     elif motion == "cover":
+        # One cover moves (unobserved) so that its left/right order in the main camera
+        # view changes. The path does not matter because the move is not observed; the
+        # trial stays solvable because the other two covers keep their places.
         blockers = [np.array(d["xy"]) for d in distractors]
+        a = np.deg2rad(cam0["az"])
+        image_right = np.array([-np.sin(a), np.cos(a)])  # horizontal image axis on the table
+        order = lambda pts: list(np.argsort([-(p @ image_right) for p in pts]))
         for _ in range(max_tries):
             k = int(rng.integers(3))
             dist, ang = rng.uniform(*COVER_SHIFT), rng.uniform(0, 2 * np.pi)
             new = slots[k] + dist * np.array([np.cos(ang), np.sin(ang)])
             rest = [slots[i] for i in range(3) if i != k]
-            # bounded move, stays on the table, keeps spacing and never passes another cover
+            moved = slots.copy()
+            moved[k] = new
             if (
                 _in_box(new, TABLE_X, TABLE_Y)
                 and all(np.linalg.norm(new - o) >= MIN_COVER_SPACING for o in rest)
-                and all(_dist_point_segment(o, slots[k], new) >= MIN_CLEARANCE for o in rest + blockers)
+                and all(np.linalg.norm(new - b) >= MIN_CLEARANCE for b in blockers)
+                and order(moved) != order(slots)
             ):
                 final[k] = new
-                change.update({"cover": k, "shift": (new - slots[k]).tolist(), "magnitude": float(dist)})
+                change.update({"cover": k, "shift": (new - slots[k]).tolist(), "magnitude": float(dist),
+                               "order_changed": True})
                 break
         else:
             raise RuntimeError("could not sample a cover move")

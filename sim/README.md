@@ -8,7 +8,7 @@ unobserved change in between:
 |---|---|---|
 | `episode1/` | 26 | target ball visible; an invisible external actor lifts the target cover, carries it over the ball and lowers it (main camera) |
 | `sweep_before/` | 10 | short arc (±10° azimuth, ±3° elevation) around the main camera pose |
-| *(change)* | – | not recorded: `fixed`, `camera` (azimuth change 10–60°), or `cover` (one cover moved 5–15 cm, no crossing) |
+| *(change)* | – | not recorded: `fixed`, `camera` (azimuth change 10–150°, so the left/right order of the covers can flip), or `cover` (one cover moved 10–35 cm such that its left/right order in the main view changes; the other two stay) |
 | `sweep_after/` | 10 | arc around the main camera pose of episode 2 |
 | `query.png` | 1 | final image of episode 2; the ball is fully hidden |
 
@@ -85,6 +85,18 @@ The shared RGB perception used by all conditions reads only `inputs/` and writes
 `run_perception.py` also scores the pipeline against ground truth (`perception/gt.py`,
 evaluation only) and writes the number of the correct candidate to `gt/candidates.json`
 for later scoring. About 35–45 s per trial on CPU.
+
+## Memory evaluation
+
+```powershell
+.venv\Scripts\python.exe run_memory.py --data out/pilot   # after run_perception.py
+```
+
+Memory conditions answer by direct lookup (no VLM) and are scored against
+`gt/candidates.json`; unknown answers count as wrong. Besides the 2D memory
+(`memory/memory2d.py`) two diagnostics are reported: `2d_noreg` (raw image positions,
+no registration) and `2d_gt_containment` (true parent cover as input, isolating
+re-identification from perception errors).
 
 ## Files
 
