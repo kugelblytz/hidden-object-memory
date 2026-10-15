@@ -170,8 +170,11 @@ def _smooth(n: int) -> np.ndarray:
 
 
 def _sweep_poses(cam: dict) -> list:
-    offsets = np.linspace(-SWEEP_HALF_ARC, SWEEP_HALF_ARC, SWEEP_FRAMES)
-    wobble = SWEEP_EL_WOBBLE * np.sin(np.linspace(0, 2 * np.pi, SWEEP_FRAMES))
+    # Continuous back-and-forth arc that starts at the main camera pose
+    # (0 -> +arc -> 0 -> -arc -> back), so consecutive frames overlap strongly.
+    phase = np.linspace(0, 2 * np.pi, SWEEP_FRAMES, endpoint=False)
+    offsets = SWEEP_HALF_ARC * np.sin(phase)
+    wobble = SWEEP_EL_WOBBLE * np.sin(2 * phase)
     return [camera_eye(cam["az"] + o, cam["el"] + w, cam["r"]) for o, w in zip(offsets, wobble)]
 
 

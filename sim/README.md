@@ -59,10 +59,39 @@ writes a labelled `recording.gif` per trial for visual inspection, and a per-cel
 summary (resampled/invalid trials, smallest visible cover, motion range) is printed
 and saved to `summary.json`. About 4–6 s and 21 MB per trial on the laptop above.
 
+## Perception pipeline
+
+The shared RGB perception used by all conditions reads only `inputs/` and writes
+`trial_XXXX/perception/perception.json` and `query_marked.png`:
+
+1. **Detection:** YOLOE-11L (Ultralytics, open vocabulary), text prompts mapped to roles
+   (`cover`, `target`, `distractor`); global threshold 0.05, target threshold 0.3;
+   class-agnostic NMS.
+2. **Tracking** within the two continuously observed segments (A = episode 1 + sweep before,
+   B = sweep after + query), by Hungarian matching on overlap and centre distance. Each
+   track's role is the score-weighted majority over its frames; tracks seen in fewer than
+   50 % of a segment's frames are dropped. Linking tracks across the unobserved change is
+   left to the memory systems.
+3. **Events:** target first/last seen, the carried cover's motion start and settling, and the
+   containment relation (target → parent cover track) from where the target disappeared.
+4. **Keyframes** (≤5) for the keyframe baseline: the four events plus the first frame after the change.
+5. **Query candidates:** cover tracks of segment B numbered left to right in the query image.
+
+```powershell
+.venv\Scripts\python.exe run_perception.py --data out/pilot
+.venv\Scripts\python.exe select_detector.py --data out/pilot   # compare weights/prompts/thresholds
+```
+
+`run_perception.py` also scores the pipeline against ground truth (`perception/gt.py`,
+evaluation only) and writes the number of the correct candidate to `gt/candidates.json`
+for later scoring. About 35–45 s per trial on CPU.
+
 ## Files
 
 - `hidden_object/env.py`: ManiSkill3 scene `HiddenObjectShell-v0` (table, textured room, parked Panda, kinematic covers, ball, distractors) and recording helpers
 - `hidden_object/trial.py`: trial sampling, phase-by-phase recording, ground-truth export
 - `hidden_object/textures.py`: seeded, non-repetitive wall and floor textures
-- `run_pilot.py`: records one trial per design cell
+- `run_pilot.py`: records trials per design cell (pilot/test seed ranges)
+- `perception/`: detector, tracker, pipeline (events, keyframes, candidates), GT boxes and metrics (evaluation only)
+- `run_perception.py`, `select_detector.py`: run and evaluate perception, compare detector settings
 - `smoke_test_shellgame.py`: renders the original MIKASA-Robo ShellGame for comparison
