@@ -121,6 +121,22 @@ Camera condition by angle:
 
 Fixes 1 and 3 are deferred until all four conditions exist.
 
+## 5b. VGGT memory (condition 4): first smoke test
+
+First version: separate VGGT passes for before/after; SIFT background matches lifted to 3D and
+pooled over all frame pairs; RANSAC similarity transform; same assignment as 2D.
+
+- On CPU one trial takes **~19 min** (two passes of 11 frames). Local runs are spot checks only;
+  full runs belong on the cluster.
+- Trial 19 (identical cups, 85°): the pipeline runs end to end, but the answer is wrong. Only
+  **22 of 461** lifted correspondences are inliers.
+- **Insight:** in this design VGGT only adds depth to 2D matches; the cross-view matching is still
+  classical SIFT, which fails at large viewpoint changes exactly as in 2D. *How* VGGT is used decides
+  whether it can help. Options:
+  - (a) one joint VGGT pass over before and after frames, so VGGT aligns the views with its learned
+    matching. Valid for camera changes; violates the static-scene assumption when a cup moved.
+  - (b) a learned matcher (LightGlue/RoMa) for both 2D and 3D.
+
 ## 6. Status of the four conditions
 
 | Condition | Status |
