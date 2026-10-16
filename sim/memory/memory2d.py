@@ -71,21 +71,29 @@ class Frame:
         return {d["track_id"]: d for d in self.dets if d["role"] == "cover"}
 
 
-def homography(fa: Frame, fb: Frame):
+def homography(fa: Frame, fb: Frame, return_matches: bool = False):
+    """RANSAC homography from fa to fb on background features; returns (H, n_inliers[, matches])."""
+    none = (None, 0, []) if return_matches else (None, 0)
     if fa.desc is None or fb.desc is None or len(fa.kp) < 8 or len(fb.kp) < 8:
-        return None, 0
+        return none
     pairs = cv2.BFMatcher(cv2.NORM_L2).knnMatch(fa.desc, fb.desc, k=2)
     good = [m for m, n in (p for p in pairs if len(p) == 2) if m.distance < RATIO * n.distance]
     if len(good) < 8:
-        return None, 0
+        return none
     src = np.float32([fa.kp[m.queryIdx].pt for m in good])
     dst = np.float32([fb.kp[m.trainIdx].pt for m in good])
     H, inl = cv2.findHomography(src, dst, cv2.RANSAC, RANSAC_PX)
-    return (H, int(inl.sum())) if H is not None else (None, 0)
+    if H is None:
+        return none
+    if return_matches:
+        return H, int(inl.sum()), [(s, d, bool(k)) for s, d, k in zip(src, dst, inl.ravel())]
+    return H, int(inl.sum())
 
 
-def answer(trial_dir, perception: dict, parent_track: int | None, register: bool = True) -> dict:
-    """Return {"candidate": number | None, ...diagnostics} for one trial."""
+def answer(trial_dir, perception: dict, parent_track: int | None, register: bool = True,
+           debug: bool = False) -> dict:
+    """Return {"candidate": number | None, ...diagnostics} for one trial.
+    With ``debug`` the intermediate state is added under "_debug" (for visualisation)."""
     trial_dir = Path(trial_dir)
     out = {"candidate": None, "reason": None}
     if parent_track is None:
@@ -108,11 +116,15 @@ def answer(trial_dir, perception: dict, parent_track: int | None, register: bool
                     best = (fa, fb, H, n)
         fa, fb, H, n_inl = best
         out.update({"inliers": n_inl, "pair": [f"{fa.stream}/{fa.idx}", f"{fb.stream}/{fb.idx}"]})
+        if debug:
+            out["_debug"] = {"fa": fa, "fb": fb, "H": H, "matches": homography(fa, fb, return_matches=True)[2] if fa else []}
         if H is None or n_inl < MIN_INLIERS:
             out["reason"] = "registration failed"
             return out
     else:  # diagnostic: raw image positions, first after-change frame
         fa, fb, H = frames_a[0], frames_b[0], np.eye(3)
+        if debug:
+            out["_debug"] = {"fa": fa, "fb": fb, "H": H, "matches": []}
 
     old, new = fa.covers(), fb.covers()
     old_ids, new_ids = list(old), list(new)
@@ -130,6 +142,9 @@ def answer(trial_dir, perception: dict, parent_track: int | None, register: bool
             cost[i, j] = pos + APPEARANCE_WEIGHT * appearance_distance(h_old, colour_hist(fb.img, new[tn]["box"]))
     rows, cols = linear_sum_assignment(cost)
     assign = {old_ids[r]: new_ids[c] for r, c in zip(rows, cols)}
+    if debug:
+        out["_debug"].update({"old": old, "new": new, "mapped": dict(zip(old_ids, mapped)), "assign": assign,
+                              "new_parent": assign.get(parent_track)})
     if parent_track not in assign:
         out["reason"] = "parent not assigned"
         return out
