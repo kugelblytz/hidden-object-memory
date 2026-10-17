@@ -69,15 +69,18 @@ class DryRunBackend:
 
 
 class HFBackend:
-    """Any chat VLM loadable with transformers' AutoModelForImageTextToText
-    (e.g. Qwen/Qwen2.5-VL-7B-Instruct on the cluster, HuggingFaceTB/SmolVLM-256M-Instruct for
-    a local plumbing test). Greedy decoding."""
+    """Any chat VLM loadable with transformers' AutoModelForImageTextToText. Greedy decoding.
 
-    def __init__(self, model_id: str, device: str = "cpu", max_new_tokens: int = 8):
+    Chosen models (see FINDINGS.md): primary Qwen/Qwen3.5-9B, comparison
+    Qwen/Qwen3-VL-8B-Instruct, robustness check Qwen/Qwen3.6-27B. Qwen3.5/3.6 "think" by
+    default; thinking is switched off so the reply is a short answer."""
+
+    def __init__(self, model_id: str, device: str = "cuda", max_new_tokens: int = 8, enable_thinking: bool = False):
         import torch
         from transformers import AutoModelForImageTextToText, AutoProcessor
 
         self.name, self.device, self.max_new_tokens = model_id, device, max_new_tokens
+        self.template_kwargs = {"enable_thinking": enable_thinking}
         dtype = torch.bfloat16 if device.startswith("cuda") else torch.float32
         self.processor = AutoProcessor.from_pretrained(model_id)
         self.model = AutoModelForImageTextToText.from_pretrained(model_id, torch_dtype=dtype).to(device).eval()
@@ -88,7 +91,8 @@ class HFBackend:
 
         content = [{"type": "image"} for _ in images] + [{"type": "text", "text": prompt}]
         messages = [{"role": "user", "content": content}]
-        text = self.processor.apply_chat_template(messages, add_generation_prompt=True)
+        # Templates without a thinking switch ignore the extra keyword.
+        text = self.processor.apply_chat_template(messages, add_generation_prompt=True, **self.template_kwargs)
         pil = [Image.open(p).convert("RGB") for p in images]
         inputs = self.processor(text=text, images=pil, return_tensors="pt").to(self.device)
         with torch.no_grad():

@@ -2,7 +2,7 @@
 
 Usage:
   .venv\\Scripts\\python.exe run_baselines.py --data out/pilot --backend dry_run
-  .venv\\Scripts\\python.exe run_baselines.py --data out/pilot --backend hf --model Qwen/Qwen2.5-VL-7B-Instruct --device cuda
+  .venv\\Scripts\\python.exe run_baselines.py --data out/pilot --backend hf --model Qwen/Qwen3.5-9B --device cuda
 
 dry_run only writes trial/baselines/<condition>.json bundles. Results are saved to
 <data>/baselines_<model>.json; unknown answers count as wrong.
@@ -21,8 +21,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="out/pilot")
     ap.add_argument("--backend", choices=["dry_run", "hf"], default="dry_run")
-    ap.add_argument("--model", default="Qwen/Qwen2.5-VL-7B-Instruct")
-    ap.add_argument("--device", default="cpu")
+    ap.add_argument("--model", default="Qwen/Qwen3.5-9B")
+    ap.add_argument("--device", default="cuda")
     args = ap.parse_args()
 
     backend = DryRunBackend() if args.backend == "dry_run" else HFBackend(args.model, args.device)

@@ -137,6 +137,24 @@ pooled over all frame pairs; RANSAC similarity transform; same assignment as 2D.
     matching. Valid for camera changes; violates the static-scene assumption when a cup moved.
   - (b) a learned matcher (LightGlue/RoMa) for both 2D and 3D.
 
+## 5c. Choice of VLM for the frame baselines (literature research, 2026-10-17)
+
+- **Primary: `Qwen/Qwen3.5-9B`** (Apache-2.0; e.g. EmbSpatial 83.0, ERQA 55.5), run with thinking off.
+  **Comparison: `Qwen/Qwen3-VL-8B-Instruct`** (MuirBench 64.4, BLINK 69.1; measured on VET-Bench).
+  **Robustness check: `Qwen/Qwen3.6-27B`.**
+- Fits next to VGGT (≈7–11 GB):
+  - 40/48/80 GB GPUs: 9B co-resident in bf16;
+  - 80 GB: 27B co-resident in bf16;
+  - 24 GB: sequential only (or FP8/8-bit).
+  - Avoid 4-bit: untested for multi-image reasoning.
+- **Expected outcome:** VET-Bench (arXiv 2603.08436) reports base VLMs at chance on the shell game
+  (Qwen3-VL-8B 0.30, Gemini-3-Pro 0.34, chance 0.33); only a tracking-fine-tuned model reached 0.91.
+  Our task adds an unobserved viewpoint change. This supports RQ1's premise that explicit memory is needed.
+- Practicalities: about 300 visual tokens per 640×480 image (≈1.8k for 6 images); pass frames as an
+  image list, not a video; transformers ≥5.5. VLM runs happen on the cluster only, never on the laptop.
+  A 256M plumbing-test model was dropped: too weak to be a meaningful baseline, and the laptop ran
+  out of memory.
+
 ## 6. Status of the four conditions
 
 | Condition | Status |
