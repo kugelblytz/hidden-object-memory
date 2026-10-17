@@ -45,8 +45,14 @@ def _model():
 
         _MODEL = VGGT()
         _MODEL.load_state_dict(torch.load(hf_hub_download("facebook/VGGT-1B", "model.pt"), map_location="cpu"))
-        _MODEL.eval()
+        _MODEL.to(_device()).eval()
     return _MODEL
+
+
+def _device() -> str:
+    import torch
+
+    return "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def reconstruct(paths: list, cache: Path) -> dict:
@@ -59,14 +65,15 @@ def reconstruct(paths: list, cache: Path) -> dict:
     from vggt.utils.load_fn import load_and_preprocess_images
     from vggt.utils.pose_enc import pose_encoding_to_extri_intri
 
-    images = load_and_preprocess_images([str(p) for p in paths])
+    images = load_and_preprocess_images([str(p) for p in paths]).to(_device())
     assert images.shape[-2:] == (VGGT_H, VGGT_W), images.shape
-    with torch.no_grad():
+    # bf16 on GPU (H100) as recommended by the VGGT authors; fp32 on CPU.
+    with torch.no_grad(), torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=_device() == "cuda"):
         pred = _model()(images)
     extri, intri = pose_encoding_to_extri_intri(pred["pose_enc"], images.shape[-2:])
-    depth = pred["depth"][0].numpy()
-    points = unproject_depth_map_to_point_map(depth, extri[0].numpy(), intri[0].numpy())
-    conf = pred["depth_conf"][0].numpy()
+    depth = pred["depth"][0].float().cpu().numpy()
+    points = unproject_depth_map_to_point_map(depth, extri[0].float().cpu().numpy(), intri[0].float().cpu().numpy())
+    conf = pred["depth_conf"][0].float().cpu().numpy()
     cache.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(cache, points=points.astype(np.float16), conf=conf.astype(np.float16))
     return {"points": points.astype(np.float32), "conf": conf.astype(np.float32)}

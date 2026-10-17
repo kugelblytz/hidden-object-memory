@@ -150,6 +150,13 @@ pooled over all frame pairs; RANSAC similarity transform; same assignment as 2D.
 - **Expected outcome:** VET-Bench (arXiv 2603.08436) reports base VLMs at chance on the shell game
   (Qwen3-VL-8B 0.30, Gemini-3-Pro 0.34, chance 0.33); only a tracking-fine-tuned model reached 0.91.
   Our task adds an unobserved viewpoint change. This supports RQ1's premise that explicit memory is needed.
+- **Hardware constraint (2026-10-17): the cluster offers only a 20 GB slice of an H100.**
+  - VGGT and the VLM therefore run sequentially: VGGT first for all trials (cached), then the VLM.
+  - VGGT alone fits easily (bf16), including a joint before/after pass.
+  - Qwen3.5-9B does not fit in bf16 (~20 GB of weights) and runs in 8-bit (~11 GB, vision tower kept
+    in bf16); Qwen3-VL-8B likewise.
+  - The 27B robustness check does not fit. Options: drop it, or use a large API model on a subset
+    (less reproducible).
 - Practicalities: about 300 visual tokens per 640×480 image (≈1.8k for 6 images); pass frames as an
   image list, not a video; transformers ≥5.5. VLM runs happen on the cluster only, never on the laptop.
   A 256M plumbing-test model was dropped: too weak to be a meaningful baseline, and the laptop ran

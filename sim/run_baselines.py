@@ -23,9 +23,11 @@ def main():
     ap.add_argument("--backend", choices=["dry_run", "hf"], default="dry_run")
     ap.add_argument("--model", default="Qwen/Qwen3.5-9B")
     ap.add_argument("--device", default="cuda")
+    ap.add_argument("--load-in-8bit", action="store_true", help="needed for ~9B models on a 20 GB GPU slice")
     args = ap.parse_args()
 
-    backend = DryRunBackend() if args.backend == "dry_run" else HFBackend(args.model, args.device)
+    backend = (DryRunBackend() if args.backend == "dry_run"
+               else HFBackend(args.model, args.device, load_in_8bit=args.load_in_8bit))
     cells, rows = defaultdict(lambda: defaultdict(list)), []
     for trial in sorted(Path(args.data).glob("trial_*")):
         perception = json.loads((trial / "perception" / "perception.json").read_text())

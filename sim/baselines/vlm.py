@@ -75,7 +75,8 @@ class HFBackend:
     Qwen/Qwen3-VL-8B-Instruct, robustness check Qwen/Qwen3.6-27B. Qwen3.5/3.6 "think" by
     default; thinking is switched off so the reply is a short answer."""
 
-    def __init__(self, model_id: str, device: str = "cuda", max_new_tokens: int = 8, enable_thinking: bool = False):
+    def __init__(self, model_id: str, device: str = "cuda", max_new_tokens: int = 8, enable_thinking: bool = False,
+                 load_in_8bit: bool = False):
         import torch
         from transformers import AutoModelForImageTextToText, AutoProcessor
 
@@ -83,7 +84,16 @@ class HFBackend:
         self.template_kwargs = {"enable_thinking": enable_thinking}
         dtype = torch.bfloat16 if device.startswith("cuda") else torch.float32
         self.processor = AutoProcessor.from_pretrained(model_id)
-        self.model = AutoModelForImageTextToText.from_pretrained(model_id, torch_dtype=dtype).to(device).eval()
+        if load_in_8bit:
+            # Needed on a 20 GB H100 slice: a 9B model in bf16 takes ~20 GB for weights alone.
+            # The vision tower stays in bf16; only language-model linear layers are quantised.
+            from transformers import BitsAndBytesConfig
+
+            quant = BitsAndBytesConfig(load_in_8bit=True, llm_int8_skip_modules=["visual", "vision_tower", "lm_head"])
+            self.model = AutoModelForImageTextToText.from_pretrained(
+                model_id, torch_dtype=dtype, quantization_config=quant, device_map=device).eval()
+        else:
+            self.model = AutoModelForImageTextToText.from_pretrained(model_id, torch_dtype=dtype).to(device).eval()
 
     def generate(self, images: list, prompt: str) -> str:
         import torch

@@ -13,3 +13,4 @@ huggingface_hub
 einops
 safetensors
 # vggt: pip install --no-deps git+https://github.com/facebookresearch/vggt
+bitsandbytes  # 8-bit VLM on the 20 GB H100 slice (cluster only)
