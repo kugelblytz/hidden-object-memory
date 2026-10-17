@@ -1,0 +1,13 @@
+# Cluster (Linux, CUDA) dependencies for run_all.py. No simulator: trials are recorded on the laptop.
+# torch/torchvision are installed separately from the CUDA wheel index (see setup_env.sh).
+numpy
+scipy
+pillow
+ultralytics==8.4.177
+transformers>=5.5
+accelerate
+bitsandbytes
+huggingface_hub
+safetensors
+einops
+num2words
