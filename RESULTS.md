@@ -147,6 +147,35 @@ Prompts were tuned on pilot data and then frozen.
 - The ~0.93 ceiling in the fixed and mug-moved conditions is therefore a perception limit, not a
   memory limit.
 
+## Related work and novelty (literature check, 2026-10-18)
+
+A targeted search (about 15 queries; arXiv abstracts/HTML; not a systematic review) found **no
+paper reporting this combination**: one joint VGGT pass over temporally separated frames, used for
+container re-identification and hidden-object localization across unobserved 10–150° viewpoint
+changes, compared against 2D registration and VLM-keyframe baselines. The individual ideas do
+have precedents.
+
+| Work | Relation to this study |
+|---|---|
+| **VGGT-CD** (Zhang et al., arXiv 2605.16859, 2026) | **Closest precedent for the joint pass.** Runs before/after keyframes through VGGT jointly to get a shared frame and scale for 3D change detection. Shows that independent per-epoch reconstructions are badly mis-registered (registration error, not object accuracy). No objects, memory or containers. |
+| **SOMA** (Li et al., arXiv 2605.22283, ICML 2026) | Closest **VGGT object memory** for robots (out-of-view objects, 3D boxes). Objects are not inside containers; assumes a static scene and small viewpoint changes; no joint-vs-separate comparison. |
+| **GOLDILOCS** (Friedlander et al., ICLR 2026) | Object-level change detection from images taken at different times with feed-forward 3D reconstruction. No memory or hidden objects. (Only an abstract snippet was read.) |
+| **VET-Bench** (Liu & Lee, arXiv 2603.08436, 2026) | Shows that VLMs are near chance at tracking identical objects (shell game), while explicit tracking succeeds. Our RQ1 is consistent with it. No 3D, no viewpoint change. |
+| **Ledger** (Dieudonné et al., arXiv 2609.34554, 2026) / **RoboMME** | External 2D object memory for a VLA, including containment (drawers). No 3D, no viewpoint changes. |
+| **Tracking Is Not Permanence** (Xie & Alanwar, arXiv 2610.07355, 2026) | Video world models lose objects carried inside moving containers, which is our cover-moved case. No 3D memory. |
+| Others | 3DGS-CD (2411.03706), SceneVGGT (2602.15899), Embodied VideoAgent (2501.00358), RoboRetriever (2508.12916), FOUND-IT (2605.25371): related but different. |
+
+**How to frame the contribution:**
+- It is not a new mechanism. Joint feed-forward reconstruction across time is VGGT-CD's idea and must
+  be credited.
+- It is a new **application and controlled evaluation**: the joint pass applied to hidden-object
+  containment memory.
+- Its accuracy-level joint-vs-separate ablation (+0.30 vs +0.13 over 2D under camera change) is, to
+  our knowledge, the first measured on an object-level task rather than as registration error.
+
+These references are not yet in the research plan's bibliography and should be checked against the
+full papers before citing.
+
 ## Limitations and deviations
 
 1. **The 2D baseline is weaker than necessary.** It scores below raw image positions (0.83 vs 0.87)
