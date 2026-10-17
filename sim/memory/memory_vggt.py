@@ -170,9 +170,17 @@ def ransac_sim3(X, Y, rng):
     return umeyama(X[best_inl], Y[best_inl]), best_inl
 
 
-def answer(trial_dir, perception: dict, parent_track: int | None, seed: int = 0) -> dict:
+MODES = ("separate", "joint")
+
+
+def answer(trial_dir, perception: dict, parent_track: int | None, seed: int = 0, mode: str = "separate") -> dict:
+    """mode="separate": one VGGT pass per segment, aligned by lifted background matches + Sim(3).
+    mode="joint": one VGGT pass over the frames of both segments, so before and after share a
+    3D frame and no explicit matching is needed. VGGT assumes a static scene; when a cover
+    moved, that cover violates the assumption (the rest of the scene is static)."""
+    assert mode in MODES
     trial_dir = Path(trial_dir)
-    out = {"candidate": None, "reason": None}
+    out = {"candidate": None, "reason": None, "mode": mode}
     if parent_track is None:
         out["reason"] = "no containment"
         return out
@@ -181,8 +189,16 @@ def answer(trial_dir, perception: dict, parent_track: int | None, seed: int = 0)
     fa_dicts, fb_dicts = seg_a[n_ep1 - 1:], seg_b
     frames_a = [Frame(trial_dir, f) for f in fa_dicts]
     frames_b = [Frame(trial_dir, f) for f in fb_dicts]
-    rec_a = reconstruct([frame_path(trial_dir, f["stream"], f["idx"]) for f in fa_dicts], trial_dir / "vggt" / "segment_A.npz")
-    rec_b = reconstruct([frame_path(trial_dir, f["stream"], f["idx"]) for f in fb_dicts], trial_dir / "vggt" / "segment_B.npz")
+    paths_a = [frame_path(trial_dir, f["stream"], f["idx"]) for f in fa_dicts]
+    paths_b = [frame_path(trial_dir, f["stream"], f["idx"]) for f in fb_dicts]
+    if mode == "joint":
+        rec = reconstruct(paths_a + paths_b, trial_dir / "vggt" / "joint.npz")
+        n_a = len(paths_a)
+        rec_a = {k: v[:n_a] for k, v in rec.items()}
+        rec_b = {k: v[n_a:] for k, v in rec.items()}
+    else:
+        rec_a = reconstruct(paths_a, trial_dir / "vggt" / "segment_A.npz")
+        rec_b = reconstruct(paths_b, trial_dir / "vggt" / "segment_B.npz")
 
     old, new = cover_positions(rec_a, frames_a), cover_positions(rec_b, frames_b)
     if parent_track not in old:
@@ -192,22 +208,25 @@ def answer(trial_dir, perception: dict, parent_track: int | None, seed: int = 0)
         out["reason"] = "no covers after change"
         return out
 
-    X, Y = correspondences(rec_a, frames_a, rec_b, frames_b)
-    rng = np.random.default_rng(seed)
-    if len(X) > MAX_CORR:
-        keep = rng.choice(len(X), MAX_CORR, replace=False)
-        X, Y = X[keep], Y[keep]
-    out["correspondences"] = int(len(X))
-    if len(X) < MIN_INLIERS:
-        out["reason"] = "registration failed"
-        return out
-    sim3, inl = ransac_sim3(X, Y, rng)
-    out["inliers"] = int(inl.sum())
-    if sim3 is None or inl.sum() < MIN_INLIERS:
-        out["reason"] = "registration failed"
-        return out
-    s, R, t = sim3
-    out["scale"] = round(float(s), 3)
+    if mode == "joint":
+        s, R, t = 1.0, np.eye(3), np.zeros(3)  # already in one frame
+    else:
+        X, Y = correspondences(rec_a, frames_a, rec_b, frames_b)
+        rng = np.random.default_rng(seed)
+        if len(X) > MAX_CORR:
+            keep = rng.choice(len(X), MAX_CORR, replace=False)
+            X, Y = X[keep], Y[keep]
+        out["correspondences"] = int(len(X))
+        if len(X) < MIN_INLIERS:
+            out["reason"] = "registration failed"
+            return out
+        sim3, inl = ransac_sim3(X, Y, rng)
+        out["inliers"] = int(inl.sum())
+        if sim3 is None or inl.sum() < MIN_INLIERS:
+            out["reason"] = "registration failed"
+            return out
+        s, R, t = sim3
+        out["scale"] = round(float(s), 3)
 
     old_ids, new_ids = list(old), list(new)
     new_xyz = np.array([new[t_]["xyz"] for t_ in new_ids])
