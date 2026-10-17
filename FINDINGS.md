@@ -162,6 +162,76 @@ pooled over all frame pairs; RANSAC similarity transform; same assignment as 2D.
   A 256M plumbing-test model was dropped: too weak to be a meaningful baseline, and the laptop ran
   out of memory.
 
+## 5d. Full test run (2026-10-17, 180 trials, 20 GB H100 slice)
+
+The test set (seeds from 1,000,000) was recorded on the laptop (180/180 valid) and evaluated on the
+cluster with `run_all.py`. Run times:
+- perception 4.5 min;
+- 2D memory 15 min;
+- VGGT, both variants, 44 min (≈15 s/trial);
+- VLMs (8-bit) 59 min.
+
+Overall accuracy (chance 0.33; 95% bootstrap CI resampled within scenes):
+
+| Condition | Acc. [95% CI] |
+|---|---|
+| VGGT memory, joint pass | **0.93** [0.89, 0.97] |
+| VGGT memory, separate passes | 0.88 [0.83, 0.92] |
+| 2D memory (homography) | 0.83 [0.79, 0.88] |
+| 2D, raw positions (diagnostic) | 0.87 [0.82, 0.92] |
+| Keyframes, Qwen3.5-9B / Qwen3-VL-8B | 0.66 [0.59, 0.72] / 0.68 [0.61, 0.74] |
+| Current-only, Qwen3.5-9B / Qwen3-VL-8B | 0.27 [0.21, 0.33] / 0.08 (mostly "unknown") |
+
+By cell (2D, 2D raw, VGGT separate, VGGT joint, keyframe Qwen3.5, keyframe Qwen3-VL):
+
+| Cell | 2D | 2D raw | VGGT sep. | VGGT joint | KF Qwen3.5 | KF Qwen3-VL |
+|---|---|---|---|---|---|---|
+| identical/fixed | 0.93 | 0.93 | 0.93 | 0.93 | 0.90 | 0.80 |
+| identical/camera | 0.53 | 0.63 | 0.60 | 0.87 | 0.53 | 0.53 |
+| identical/cover | 0.93 | 0.93 | 0.93 | 0.93 | 0.50 | 0.43 |
+| distinct/fixed | 0.93 | 0.93 | 0.93 | 0.93 | 0.73 | 0.90 |
+| distinct/camera | 0.67 | 0.80 | 0.87 | 0.93 | 0.67 | 0.60 |
+| distinct/cover | 1.00 | 1.00 | 1.00 | 1.00 | 0.60 | 0.80 |
+
+Camera change by angle (2D / VGGT joint):
+
+| Angle | 2D | VGGT joint |
+|---|---|---|
+| 10–40° | 1.00 | 1.00 |
+| 40–70° | 0.50 | 0.88 |
+| 70–100° | 0.30 | 0.90 |
+| 100–151° | 0.55 | 0.85 |
+
+Contrasts:
+- **RQ1:** memory minus keyframe (Qwen3.5) is +0.18 (2D), +0.22 (VGGT separate) and +0.28 (VGGT joint),
+  all p_holm < 0.001.
+- **RQ2:** VGGT joint minus 2D under camera change is **+0.30** [+0.18, +0.43] (p < 0.001); VGGT separate
+  is +0.13 [0.00, +0.27] (p = 0.08). There is no difference for fixed scenes or cover moves.
+- **H2** (the advantage grows with the angle) is **not supported**. The interaction CIs include 0. The
+  joint-pass advantage is broad from ~40° on rather than increasing with the angle.
+
+Perception on the test set:
+- hiding detected 99%;
+- correct parent cover 92%;
+- correct cover among the candidates 100%;
+- exactly three candidates 92%.
+
+The ~0.93 ceiling of all memories in the fixed and cover conditions is set by perception errors.
+
+**Caveats:**
+1. The 2D memory with homography is *worse* than raw positions (false registrations on the
+   repetitive wood grain; failure type 1, still unfixed). The 2D baseline is therefore weaker than
+   necessary, which inflates the VGGT advantage.
+2. **Protocol deviation:** in the first test run the VLM replies were truncated after 8 tokens, so
+   Qwen3.5-9B keyframe was 0.00, purely a parsing artefact. Fixed after seeing test output:
+   - 128 new tokens;
+   - strict parsing of bare numbers;
+   - an answer-extraction turn, identical for both models and conditions.
+
+   First-run results are kept on the cluster (`out/test/results_run1_truncated`).
+3. The VGGT joint pass is also applied in the cover condition, where a moved cup violates VGGT's
+   static-scene assumption. It still reached 0.93/1.00 there.
+
 ## 6. Status of the four conditions
 
 | Condition | Status |
