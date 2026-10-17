@@ -2,9 +2,13 @@
 
 Usage (from sim/):  CUDA_VISIBLE_DEVICES= nohup python cluster/download_models.py > cluster_models.log 2>&1 &
 """
+import sys
 import time
+from pathlib import Path
 
 from huggingface_hub import hf_hub_download, snapshot_download
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # sim/, for the perception package
 
 VLMS = ["Qwen/Qwen3.5-9B", "Qwen/Qwen3-VL-8B-Instruct"]
 
