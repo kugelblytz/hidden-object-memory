@@ -3,3 +3,9 @@ __pycache__/
 .claude/
 *.pt
 *.ts
+
+# secrets: never commit
+jupyter_token.txt
+*token*.txt
+*.token
+.env
