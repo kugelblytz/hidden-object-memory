@@ -153,8 +153,12 @@ def stage_vggt(trials, store, args):
 
 
 def stage_baselines(trials, store, args):
-    from baselines.vlm import CONDITIONS, HFBackend, build_bundle, parse_answer
+    import warnings
 
+    from baselines.vlm import CONDITIONS, HFBackend, build_bundle, is_unknown, parse_answer
+
+    # bitsandbytes warns on every 8-bit matmul; this flooded the log with ~800k lines.
+    warnings.filterwarnings("ignore", message=".*MatMul8bitLt.*")
     for model_id in args.vlm:
         short = model_id.split("/")[-1]
         names = {c: f"vlm:{short}:{c}" for c in CONDITIONS}
@@ -167,9 +171,14 @@ def stage_baselines(trials, store, args):
             perception, correct = load_perception(trial), correct_candidate(trial)
             for cond, name in names.items():
                 bundle = build_bundle(trial, perception, cond)
-                reply = backend.generate([trial / p for p in bundle["images"]], bundle["prompt"])
-                ans = parse_answer(reply, bundle["candidates"])
-                rec["conditions"][name] = scored({"candidate": ans, "reply": reply, "reason": "ok" if ans else "unknown"}, correct)
+                images = [trial / p for p in bundle["images"]]
+                reply = backend.generate(images, bundle["prompt"])
+                ans, extracted = parse_answer(reply, bundle["candidates"]), None
+                if ans is None and not is_unknown(reply):  # free text: ask for the bare answer
+                    extracted = backend.extract(images, bundle["prompt"], reply, bundle["candidates"])
+                    ans = parse_answer(extracted, bundle["candidates"])
+                rec["conditions"][name] = scored({"candidate": ans, "reply": reply, "extracted": extracted,
+                                                  "reason": "ok" if ans else "unknown"}, correct)
             store.save(trial, rec)
             print(f"[baselines] {short} {trial.name} " + " ".join(
                 f"{c}={rec['conditions'][n]['reply']!r}" for c, n in names.items()), flush=True)
