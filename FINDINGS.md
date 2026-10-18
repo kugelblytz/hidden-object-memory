@@ -2,7 +2,7 @@
 
 Running record of findings, design decisions and open issues from building and piloting the
 experiment. All numbers are **pilot data** (30 trials, 5 per cell), so they are indications,
-not results. Last updated: 2026-10-16.
+not results. Last updated: 2026-10-18.
 
 ## 1. Simulation
 
@@ -121,7 +121,7 @@ Camera condition by angle:
 
 Fixes 1 and 3 are deferred until all four conditions exist.
 
-## 5b. VGGT memory (condition 4): first smoke test
+## 6. VGGT memory (condition 4): first smoke test
 
 First version: separate VGGT passes for before/after; SIFT background matches lifted to 3D and
 pooled over all frame pairs; RANSAC similarity transform; same assignment as 2D.
@@ -137,7 +137,7 @@ pooled over all frame pairs; RANSAC similarity transform; same assignment as 2D.
     matching. Valid for camera changes; violates the static-scene assumption when a cup moved.
   - (b) a learned matcher (LightGlue/RoMa) for both 2D and 3D.
 
-## 5c. Choice of VLM for the frame baselines (literature research, 2026-10-17)
+## 7. Choice of VLM for the frame baselines (literature research, 2026-10-17)
 
 - **Primary: `Qwen/Qwen3.5-9B`** (Apache-2.0; e.g. EmbSpatial 83.0, ERQA 55.5), run with thinking off.
   **Comparison: `Qwen/Qwen3-VL-8B-Instruct`** (MuirBench 64.4, BLINK 69.1; measured on VET-Bench).
@@ -162,7 +162,7 @@ pooled over all frame pairs; RANSAC similarity transform; same assignment as 2D.
   A 256M plumbing-test model was dropped: too weak to be a meaningful baseline, and the laptop ran
   out of memory.
 
-## 5d. Full test run (2026-10-17, 180 trials, 20 GB H100 slice)
+## 8. Full test run (2026-10-17, 180 trials, 20 GB H100 slice)
 
 The test set (seeds from 1,000,000) was recorded on the laptop (180/180 valid) and evaluated on the
 cluster with `run_all.py`. Run times:
@@ -232,27 +232,38 @@ The ~0.93 ceiling of all memories in the fixed and cover conditions is set by pe
 3. The VGGT joint pass is also applied in the cover condition, where a moved cup violates VGGT's
    static-scene assumption. It still reached 0.93/1.00 there.
 
-## 6. Status of the four conditions
+## 9. Status of the four conditions
 
-| Condition | Status |
-|---|---|
-| 1. Current-only (VLM, final image) | query bundles and VLM interface being built; VLM run needs the cluster |
-| 2. Keyframes (VLM, ≤5 event frames) | keyframe selection done; VLM run needs the cluster |
-| 3. 2D memory | built, 87 % on the pilot, two fixes pending |
-| 4. VGGT memory | being built (VGGT installed, weights downloading); full runs need the cluster |
+All four conditions are built and have been evaluated on the 180-trial test set (section 8; the full
+report is in [RESULTS.md](RESULTS.md)):
 
-## 7. Open decisions and to-dos
+| Condition | Status | Test accuracy |
+|---|---|---|
+| 1. Current-only (VLM, final image) | done, run on the cluster | 0.27 (Qwen3.5-9B) / 0.08 (Qwen3-VL-8B) |
+| 2. Keyframes (VLM, ≤5 event frames) | done, run on the cluster | 0.66 / 0.68 |
+| 3. 2D memory | done; the plausibility check for homographies is still missing | 0.83 |
+| 4. VGGT memory | done, separate and joint pass | 0.88 (separate) / 0.93 (joint) |
 
-- **Project direction** (to discuss with Haonan and the mentor):
-  - (A) narrow, honestly scoped study;
-  - (B) object-agnostic perception plus a generalisation test on unseen objects and containers
-    (recommended);
-  - (C) a VLM-centred study.
-- **Research plan (v4) needs updating:**
+## 10. Open decisions and to-dos
+
+Earlier decisions (sections 2–4): the harder task, memory by lookup, frozen perception and the
+course scope. The current to-dos:
+
+- **Research plan document:** update v4 to the final design:
   - camera change 10–150° instead of 10–60°;
-  - cup moves that change the order;
-  - memory conditions answer by lookup (Q5 revised);
-  - MIKASA-Robo "adapted from", plus its reference entry;
+  - order-changing cup moves;
+  - memory conditions answer by lookup;
+  - the two VGGT variants;
+  - the simulator (ManiSkill3, adapted from MIKASA-Robo) and its reference entry;
+  - the VLM choice;
   - limitations on perception specificity.
-- **Statistics:** 5 trials per cell is far too few for conclusions; the planned 30 per cell
-  (180 trials) are needed.
+- **Fix the 2D baseline:** reject implausible homographies (failure type 1 in section 5), possibly
+  use a learned matcher (LightGlue) for both 2D and VGGT-separate; re-run only the 2D stage.
+- **New condition, VLM + VGGT:** give the VLM the joint-pass geometry (projected old positions or 3D
+  coordinates) and test whether its accuracy becomes independent of the viewpoint change.
+- **Generalisation test:** other containers, target objects, container heights and scenes, without
+  re-tuning the perception.
+- **Real data:** a small real-camera experiment (e.g. a tripod camera and cups moved by hand).
+- **H2:** more camera trials per angle bin (currently 10–20), so the interaction test has power.
+- **Repository:** share the GitHub repository with Haonan and the mentor, and rename or merge the
+  branch `worktree-pilot-seed-split` into `main`.

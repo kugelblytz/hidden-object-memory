@@ -2,15 +2,15 @@
 
 Pilot data only. Prints per-role precision/recall and the share of query images in
 which exactly the three covers are detected (the candidate set used by all conditions).
-Usage: .venv\\Scripts\\python.exe select_detector.py --data out/pilot
+Usage: .venv\\Scripts\\python.exe -m tools.select_detector --data out/pilot
 """
 import argparse
 import json
 from pathlib import Path
 
 from perception.detector import Detector
-from perception.evaluate import match_frame, query_candidates_exact, summarize
-from perception.gt import gt_boxes
+from evaluation.metrics import match_frame, query_candidates_exact, summarize
+from evaluation.gt import gt_boxes
 
 FRAMES = [("episode1", 0), ("episode1", 6), ("episode1", 13), ("episode1", 25),
           ("sweep_before", 3), ("sweep_after", 0), ("sweep_after", 6), ("query", 0)]

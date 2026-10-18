@@ -24,7 +24,7 @@ still name the cup that hides the ball? We compare five systems on 180 simulated
 | [RESULTS.md](RESULTS.md) | Results report: setup, conditions, tables, figures, research questions, related work, limitations |
 | [results/where_did_the_ball_go.html](results/where_did_the_ball_go.html) | Interactive explainer: how each system processes its inputs, a schematic model, an explorer of all 180 trials (open in a browser) |
 | [FINDINGS.md](FINDINGS.md) | Lab notebook: design decisions, pilot findings, failure analyses, protocol deviation |
-| `Research_Plan_Draft_new(4).docx` | Research plan (v4). Later design changes are recorded in FINDINGS.md (see below) |
+| [docs/research_plan_v4.docx](docs/research_plan_v4.docx) | Research plan (v4; earlier draft: `docs/research_plan_v3.docx`). Later design changes are listed below and in FINDINGS.md |
 | [sim/README.md](sim/README.md) | Code documentation: simulation, perception, memories, evaluation |
 | [sim/cluster/CLUSTER.md](sim/cluster/CLUSTER.md) | Running the evaluation on the GPU cluster |
 
@@ -32,15 +32,18 @@ still name the cup that hides the ball? We compare five systems on 180 simulated
 
 ```
 RESULTS.md, FINDINGS.md        results report and lab notebook
+docs/                          research plan drafts (v3, v4)
 results/                       figures, summary.json, HTML report, interactive explainer
 sim/
+  run_pilot.py                 record pilot or test trials (disjoint seed ranges)
+  run_all.py                   one resumable job: perception -> memories -> VLMs -> report
+  plot_results.py              figures for RESULTS.md
   hidden_object/               ManiSkill3 scene and trial recording (two episodes, unobserved change)
   perception/                  shared RGB perception: detection, tracking, events, keyframes, candidates
   memory/                      2D memory and VGGT memory (separate and joint pass)
   baselines/                   vision-language-model baselines (current-only, keyframes)
-  run_pilot.py                 record pilot or test trials (disjoint seed ranges)
-  run_all.py                   one resumable job: perception -> memories -> VLMs -> report
-  plot_results.py              figures for RESULTS.md
+  evaluation/                  the only code that reads ground truth: GT access, metrics, scoring
+  tools/                       development and diagnostic tools (python -m tools.<name>)
   cluster/                     setup script, requirements, model download, SLURM template
 ```
 

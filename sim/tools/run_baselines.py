@@ -1,8 +1,8 @@
 """Run the VLM baselines (current-only, keyframe) on perceived trials and score them.
 
 Usage:
-  .venv\\Scripts\\python.exe run_baselines.py --data out/pilot --backend dry_run
-  .venv\\Scripts\\python.exe run_baselines.py --data out/pilot --backend hf --model Qwen/Qwen3.5-9B --device cuda
+  .venv\\Scripts\\python.exe -m tools.run_baselines --data out/pilot --backend dry_run
+  .venv\\Scripts\\python.exe -m tools.run_baselines --data out/pilot --backend hf --model Qwen/Qwen3.5-9B --device cuda
 
 dry_run only writes trial/baselines/<condition>.json bundles. Results are saved to
 <data>/baselines_<model>.json; unknown answers count as wrong.
@@ -14,7 +14,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from baselines.vlm import CONDITIONS, DryRunBackend, HFBackend, build_bundle, parse_answer
-from perception.gt import gt_meta
+from evaluation.gt import gt_meta
 
 
 def main():

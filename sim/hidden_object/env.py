@@ -19,6 +19,7 @@ from mani_skill.utils import sapien_utils
 from mani_skill.utils.building import actors
 from mani_skill.utils.registration import register_env
 from mani_skill.utils.scene_builder.table import TableSceneBuilder
+from mani_skill.utils.structs.actor import Actor
 from mani_skill.utils.structs.pose import Pose
 
 from .textures import texture_file
@@ -110,7 +111,7 @@ class HiddenObjectShellEnv(BaseEnv):
             builder.initial_pose = sapien.Pose(p=centre)
             builder.build_static(name=f"room_{k}")
 
-    def _build_cover(self, idx: int, rgb) -> "Actor":
+    def _build_cover(self, idx: int, rgb) -> Actor:
         builder = actors.get_actor_builder(self.scene, id=f"ycb:{self.COVER_MODEL}")
         material = sapien.render.RenderMaterial(base_color=[*rgb, 1.0], roughness=0.65, metallic=0.0)
         for record in builder.collision_records:

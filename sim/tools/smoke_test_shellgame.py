@@ -1,7 +1,7 @@
 """Smoke test: can ManiSkill3 + MIKASA ShellGame run and render on this machine?
 
 Renders the 512 px human-render camera at several steps of one episode and
-saves PNGs to out/smoke/. Run: .venv\\Scripts\\python.exe smoke_test_shellgame.py
+saves PNGs to out/smoke/. Run: .venv\\Scripts\\python.exe -m tools.smoke_test_shellgame
 """
 import time
 from pathlib import Path
@@ -12,7 +12,7 @@ from PIL import Image
 
 import mikasa_robo_suite.vla.memory_envs.shell_game_shuffle_touch_vla  # noqa: F401 (registers env)
 
-OUT = Path(__file__).parent / "out" / "smoke"
+OUT = Path(__file__).resolve().parent.parent / "out" / "smoke"  # sim/out/smoke
 OUT.mkdir(parents=True, exist_ok=True)
 
 t0 = time.time()

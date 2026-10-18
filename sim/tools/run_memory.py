@@ -1,6 +1,6 @@
 """Evaluate the memory conditions by direct lookup (no VLM) on perceived trials.
 
-Usage: .venv\\Scripts\\python.exe run_memory.py --data out/pilot
+Usage: .venv\\Scripts\\python.exe -m tools.run_memory --data out/pilot
 
 Variants
   2d                 perception containment + table-plane registration (condition 3)
@@ -13,22 +13,9 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
+from evaluation.gt import gt_meta
+from evaluation.scoring import gt_parent_track
 from memory.memory2d import answer
-from perception.gt import gt_boxes, gt_meta
-from perception.tracker import iou
-
-
-def gt_parent_track(trial: Path, perception: dict) -> int | None:
-    """Evaluation-only: segment-A track of the true target cover at the end of episode 1."""
-    meta = gt_meta(trial)
-    seg_a = perception["segments"]["A"]
-    n_ep1 = meta["n_frames"]["episode1"]
-    gt = next((g for g in gt_boxes(trial, "episode1", n_ep1 - 1) if g["name"] == f"cover_{meta['target_cover']}"), None)
-    if gt is None:
-        return None
-    best = max(((iou(d["box"], gt["box"]), d["track_id"]) for d in seg_a[n_ep1 - 1]["dets"] if d["role"] == "cover"),
-               default=(0, None))
-    return best[1] if best[0] >= 0.5 else None
 
 
 def main():

@@ -1,16 +1,21 @@
+# Laptop environment (Windows): simulation, perception, 2D memory, evaluation, figures.
+# VGGT and the vision-language models run on the GPU cluster; see cluster/requirements-cluster.txt.
+
+# simulation
 gymnasium==1.4.0
 mani-skill==3.0.1
-numpy==2.5.4
-pillow==12.3.0
 sapien==3.0.3
-torch==2.14.1
 transforms3d==0.4.2
 trimesh==5.1.1
-ultralytics==8.4.177
+
+# core
+numpy==2.5.4
+pillow==12.3.0
 scipy==1.18.1
-transformers>=5.5
-huggingface_hub
-einops
-safetensors
-# vggt: pip install --no-deps git+https://github.com/facebookresearch/vggt
-bitsandbytes  # 8-bit VLM on the 20 GB H100 slice (cluster only)
+torch==2.14.1
+
+# perception (YOLOE detector; pulls in opencv-python and matplotlib)
+ultralytics==8.4.177
+
+# figures (plot_results.py)
+matplotlib

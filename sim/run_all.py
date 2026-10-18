@@ -21,7 +21,6 @@ import argparse
 import gc
 import json
 import time
-from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
@@ -83,7 +82,7 @@ def scored(res: dict, correct) -> dict:
 def stage_perception(trials, store, args):
     from perception.detector import Detector
     from perception.pipeline import process_trial
-    from run_perception import evaluate_trial
+    from evaluation.scoring import score_perception
 
     detector = None
     for trial in trials:
@@ -97,7 +96,7 @@ def stage_perception(trials, store, args):
         else:
             detector = detector or Detector(device=args.device)
             res = process_trial(trial, detector)
-        ev = evaluate_trial(trial, res)  # perception scoring against GT; writes gt/candidates.json
+        ev = score_perception(trial, res)  # perception scoring against GT; writes gt/candidates.json
         rec["perception"] = {k: v for k, v in ev.items() if k != "counts"}
         store.save(trial, rec)
         print(f"[perception] {trial.name} containment={'ok' if ev['containment_correct'] else 'WRONG'} "
@@ -108,7 +107,7 @@ def stage_perception(trials, store, args):
 
 def _run_conditions(trials, store, args, variants: dict, tag: str):
     """variants: name -> callable(trial, perception, parent_track, gt_parent) -> result dict."""
-    from run_memory import gt_parent_track
+    from evaluation.scoring import gt_parent_track
 
     for trial in trials:
         rec = store.load(trial)
@@ -237,7 +236,7 @@ def _logit_interaction(success, is_b, angle, rng) -> dict:
 
 
 def stage_report(trials, store, args):
-    from perception.gt import gt_meta
+    from evaluation.gt import gt_meta
 
     rng = np.random.default_rng(0)
     rows = []

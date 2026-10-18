@@ -1,109 +1,149 @@
-# Hidden-object simulation (ManiSkill3)
+# Code: simulation, perception, memories and evaluation
 
-Simulation and data recording for the research plan *Actor-Agnostic Persistent Object
-Memory for Hidden-Object Localization*. One trial is two task episodes with an
-unobserved change in between:
+All code for the study. The pipeline has four parts:
+
+1. **Recording** of trials in ManiSkill3 (laptop).
+2. **Shared perception** that only sees RGB images.
+3. **Five answering conditions:** two memories, VGGT in two variants, and the VLM baselines.
+4. **Evaluation** against simulator ground truth.
+
+Results and their interpretation are in [../RESULTS.md](../RESULTS.md).
+
+## Layout
+
+```
+sim/
+  run_pilot.py          record pilot or test trials                      (entry point)
+  run_all.py            evaluate recorded trials: all stages, resumable  (entry point)
+  plot_results.py       figures for RESULTS.md                           (entry point)
+  hidden_object/        ManiSkill3 scene HiddenObjectShell-v0, trial sampling and recording, textures
+  perception/           detector (YOLOE), tracker, pipeline: events, keyframes, numbered candidates
+  memory/               memory2d.py (homography), memory_vggt.py (separate and joint VGGT pass)
+  baselines/            vlm.py: current-only and keyframe conditions with a vision-language model
+  evaluation/           the ONLY package that reads ground truth: gt.py, metrics.py, scoring.py
+  tools/                development and diagnostic tools (run as modules, see below)
+  cluster/              setup script, cluster requirements, model download, SLURM template, CLUSTER.md
+  requirements.txt      laptop environment (Windows, simulation + perception)
+```
+
+**Separation of inputs and ground truth.** Perception, memories and baselines read only
+`trial/inputs/` (RGB frames) and the perception output. Only `evaluation/` and the tools that score
+results read `trial/gt/`.
+
+## One trial
 
 | Stream | Frames | Content |
 |---|---|---|
-| `episode1/` | 26 | target ball visible; an invisible external actor lifts the target cover, carries it over the ball and lowers it (main camera) |
-| `sweep_before/` | 10 | short arc (±10° azimuth, ±3° elevation) around the main camera pose |
-| *(change)* | – | not recorded: `fixed`, `camera` (azimuth change 10–150°, so the left/right order of the covers can flip), or `cover` (one cover moved 10–35 cm such that its left/right order in the main view changes; the other two stay) |
-| `sweep_after/` | 10 | arc around the main camera pose of episode 2 |
-| `query.png` | 1 | final image of episode 2; the ball is fully hidden |
+| `episode1/` | 26 | The ball is visible; an invisible external actor lifts a cup, carries it over the ball and lowers it. |
+| `sweep_before/` | 10 | Continuous arc (±10° azimuth, ±3° elevation) starting at the main camera pose. |
+| *(change)* | – | Not recorded. One of: `fixed`; `camera` (azimuth change 10–150°, so the left/right order can flip); `cover` (one cup moves 10–35 cm and changes its left/right order, the other two stay). |
+| `sweep_after/` | 10 | Arc around the main camera pose of episode 2. |
+| `query.png` | 1 | Final image of episode 2; the ball is fully hidden. |
 
-Design factors: appearance (`identical` = three covers of one colour, `distinct` = three
-colours; same mug mesh) × motion (`fixed`, `camera`, `cover`), across three scenes
-(room textures + distractor objects). The target cover, layout, colours and motion
-size are sampled from the trial seed.
+**Design:** appearance (`identical` / `distinct`: same mug mesh, one colour or three colours) ×
+motion (`fixed`, `camera`, `cover`), across three scenes with their own room textures and distractor
+objects. Every trial is determined by its seed.
 
-## Output layout
+**Validity checks**, resampled on failure: the ball is visible at the start and fully hidden at query
+time, and all three cups are visible in the query image.
 
 ```
 trial_XXXX/
-  inputs/      RGB only: what the methods may see
-  gt/          meta.json (layout, target, change, segmentation ids, validity checks)
-               frames.npz (depth in mm, segmentation, intrinsics K, OpenCV extrinsics per frame)
-  preview.jpg  contact sheet of input frames for quick inspection
+  inputs/        RGB frames: the only thing methods may see
+  gt/            meta.json, frames.npz (depth, segmentation, camera parameters), candidates.json
+  perception/    perception.json, query_marked.png            (written by the perception stage)
+  vggt/          cached VGGT reconstructions                   (written by the VGGT stage)
+  baselines/     VLM query bundles                             (written by the baseline stage)
+  preview.jpg, recording.gif   for visual inspection only
 ```
 
-`gt/` is for scoring and diagnostics only and must never be passed to a method.
-A trial is valid if the ball is visible at the start, hidden at query time and all
-three covers are visible in the query image; invalid trials are resampled.
+## Setup
 
-## Setup (Windows, tested on a Quadro T1000 4 GB)
+**Laptop** (Windows, tested on a Quadro T1000 4 GB; used for recording and the light stages):
 
 ```powershell
 uv venv --python 3.12 .venv
 uv pip install --python .venv\Scripts\python.exe -r requirements.txt
-uv pip install --python .venv\Scripts\python.exe --no-deps mikasa-robo-suite==1.0.0
 .venv\Scripts\python.exe -m mani_skill.utils.download_asset ycb -y
 ```
 
-`mikasa-robo-suite` pins contradictory dependencies, so it is installed with `--no-deps`;
-it is only needed for `smoke_test_shellgame.py`.
+- Create environments with `render_backend="cpu"`. With CPU-only PyTorch the default GPU render
+  backend crashes; rendering still runs on the GPU via Vulkan.
+- `tools/smoke_test_shellgame.py` additionally needs
+  `uv pip install --no-deps mikasa-robo-suite==1.0.0`. The package pins contradictory dependencies,
+  hence `--no-deps`.
 
-Always create environments with `render_backend="cpu"`: with CPU-only PyTorch the
-default GPU render backend crashes (rendering still runs on the GPU via Vulkan).
+**GPU cluster** (VGGT and vision-language models; Linux, tested on a 20 GB H100 slice): see
+[cluster/CLUSTER.md](cluster/CLUSTER.md).
 
-## Run
+## Workflow
 
 ```powershell
+# 1. record (laptop): pilot data for development, test data once the protocol is frozen
 .venv\Scripts\python.exe run_pilot.py --split pilot --per-cell 5 --gif
 .venv\Scripts\python.exe run_pilot.py --split test --per-cell 30 --protocol-frozen
+
+# 2. evaluate (GPU): perception -> 2D memory -> VGGT -> VLM baselines -> report
+python run_all.py --data out/test --vlm Qwen/Qwen3.5-9B Qwen/Qwen3-VL-8B-Instruct --load-in-8bit
+
+#    light stages only (works on the laptop)
+.venv\Scripts\python.exe run_all.py --data out/pilot --stages perception memory2d report
+
+# 3. figures
+.venv\Scripts\python.exe plot_results.py --summary ../results/test_summary.json --out ../results
 ```
 
-Pilot seeds start at 10,000 and test seeds at 1,000,000, so pilot recordings can
-never end up in the test set; test recordings require `--protocol-frozen`. `--gif`
-writes a labelled `recording.gif` per trial for visual inspection, and a per-cell
-summary (resampled/invalid trials, smallest visible cover, motion range) is printed
-and saved to `summary.json`. About 4–6 s and 21 MB per trial on the laptop above.
+Seeds:
+- Pilot seeds start at 10,000 and test seeds at 1,000,000, so the two sets never overlap.
+- Test recordings require `--protocol-frozen`.
 
-## Perception pipeline
+`run_all.py`:
+- stores per-trial results in `<data>/results/trials/` and skips finished work, so a restarted job
+  resumes;
+- frees GPU memory between VGGT and the language models;
+- writes `results/summary.json` and `results/report.html`, with accuracy and bootstrap CIs per
+  condition, cell and motion size, the RQ1/RQ2 contrasts and the H2 interaction.
 
-The shared RGB perception used by all conditions reads only `inputs/` and writes
-`trial_XXXX/perception/perception.json` and `query_marked.png`:
+## Components
 
-1. **Detection:** YOLOE-11L (Ultralytics, open vocabulary), text prompts mapped to roles
-   (`cover`, `target`, `distractor`); global threshold 0.05, target threshold 0.3;
-   class-agnostic NMS.
-2. **Tracking** within the two continuously observed segments (A = episode 1 + sweep before,
-   B = sweep after + query), by Hungarian matching on overlap and centre distance. Each
-   track's role is the score-weighted majority over its frames; tracks seen in fewer than
-   50 % of a segment's frames are dropped. Linking tracks across the unobserved change is
-   left to the memory systems.
-3. **Events:** target first/last seen, the carried cover's motion start and settling, and the
-   containment relation (target → parent cover track) from where the target disappeared.
-4. **Keyframes** (≤5) for the keyframe baseline: the four events plus the first frame after the change.
-5. **Query candidates:** cover tracks of segment B numbered left to right in the query image.
+**Perception** (`perception/`), shared by all conditions:
+1. YOLOE-11L text-prompted detection with roles `cover` / `target` / `distractor`. Prompts were tuned
+   on pilot data and then frozen.
+2. Tracking within the two observed segments; each track's role is decided by voting over its frames.
+3. Detection of the covering event, giving the containment relation "target → cup track".
+4. Up to five event-triggered keyframes.
+5. Cups in the query image numbered from left to right.
 
-```powershell
-.venv\Scripts\python.exe run_perception.py --data out/pilot
-.venv\Scripts\python.exe select_detector.py --data out/pilot   # compare weights/prompts/thresholds
-```
+**2D memory** (`memory/memory2d.py`):
+1. SIFT features on the masked static background.
+2. A RANSAC homography for the best before/after frame pair.
+3. Old cup footprints mapped into the new view.
+4. Hungarian assignment by position plus colour.
 
-`run_perception.py` also scores the pipeline against ground truth (`perception/gt.py`,
-evaluation only) and writes the number of the correct candidate to `gt/candidates.json`
-for later scoring. About 35–45 s per trial on CPU.
+**VGGT memory** (`memory/memory_vggt.py`). `mode="separate"`:
+1. One VGGT reconstruction per segment.
+2. Background matches lifted to 3D and aligned with a RANSAC similarity transform.
+3. Assignment of old to new cups in 3D.
 
-## Memory evaluation
+`mode="joint"`: one VGGT pass over the frames before and after the change, which gives a shared 3D
+frame without explicit matching.
 
-```powershell
-.venv\Scripts\python.exe run_memory.py --data out/pilot   # after run_perception.py
-```
+**Baselines** (`baselines/vlm.py`):
+- current-only (numbered query image) and keyframes (≤5 keyframes + query image);
+- greedy decoding, thinking off, optional 8-bit;
+- free-text replies get one answer-extraction turn.
 
-Memory conditions answer by direct lookup (no VLM) and are scored against
-`gt/candidates.json`; unknown answers count as wrong. Besides the 2D memory
-(`memory/memory2d.py`) two diagnostics are reported: `2d_noreg` (raw image positions,
-no registration) and `2d_gt_containment` (true parent cover as input, isolating
-re-identification from perception errors).
+Memory conditions answer by direct lookup. "Unknown" counts as wrong.
 
-## Files
+## Tools
 
-- `hidden_object/env.py`: ManiSkill3 scene `HiddenObjectShell-v0` (table, textured room, parked Panda, kinematic covers, ball, distractors) and recording helpers
-- `hidden_object/trial.py`: trial sampling, phase-by-phase recording, ground-truth export
-- `hidden_object/textures.py`: seeded, non-repetitive wall and floor textures
-- `run_pilot.py`: records trials per design cell (pilot/test seed ranges)
-- `perception/`: detector, tracker, pipeline (events, keyframes, candidates), GT boxes and metrics (evaluation only)
-- `run_perception.py`, `select_detector.py`: run and evaluate perception, compare detector settings
-- `smoke_test_shellgame.py`: renders the original MIKASA-Robo ShellGame for comparison
+Run from `sim/` as modules:
+
+| Command | Purpose |
+|---|---|
+| `python -m tools.run_perception --data out/pilot` | perception only, scored against ground truth |
+| `python -m tools.select_detector --data out/pilot` | compare detector weights, prompts and thresholds (pilot data only) |
+| `python -m tools.run_memory --data out/pilot` | 2D memory with its diagnostics |
+| `python -m tools.viz_memory --data out/pilot` | visual failure report for the 2D memory (`memory_report.html`) |
+| `python -m tools.run_baselines --data out/pilot --backend dry_run` | write VLM query bundles (or run a VLM with `--backend hf`) |
+| `python -m tools.smoke_test_shellgame` | render the original MIKASA-Robo ShellGame for comparison |

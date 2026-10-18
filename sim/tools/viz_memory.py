@@ -8,7 +8,7 @@ For every trial writes trial/memory_debug.jpg and an overview <data>/memory_repo
   bottom     background feature matches between the two views (green = RANSAC
              inliers used for the homography, red = rejected)
 Ground truth is used here only to mark the correct cover.
-Usage: .venv\\Scripts\\python.exe viz_memory.py --data out/pilot
+Usage: .venv\\Scripts\\python.exe -m tools.viz_memory --data out/pilot
 """
 import argparse
 import html
@@ -19,7 +19,7 @@ import cv2
 import numpy as np
 
 from memory.memory2d import answer, footprint
-from perception.gt import gt_meta
+from evaluation.gt import gt_meta
 
 OLD_COLOURS = [(0, 140, 255), (255, 200, 0), (255, 0, 255), (0, 255, 255)]  # BGR per old cover
 RED, GREEN, YELLOW, WHITE = (0, 0, 255), (0, 200, 0), (0, 230, 255), (255, 255, 255)
@@ -124,7 +124,7 @@ def main():
 
     entries.sort(key=lambda e: (e["ok"], e["cell"], e["trial"]))
     n_ok = sum(e["ok"] for e in entries)
-    parts = [f"<html><head><meta charset='utf-8'><title>2D memory report</title><style>"
+    parts = ["<html><head><meta charset='utf-8'><title>2D memory report</title><style>"
              "body{font-family:sans-serif;background:#111;color:#eee;margin:16px}img{max-width:100%}"
              "table{border-collapse:collapse}td,th{border:1px solid #444;padding:4px 8px}"
              ".bad{color:#f66}.good{color:#6c6}</style></head><body>",

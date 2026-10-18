@@ -2,7 +2,7 @@
 from collections import defaultdict
 
 from .gt import gt_boxes
-from .tracker import iou
+from perception.tracker import iou
 
 ROLES = ("cover", "target", "distractor")
 
