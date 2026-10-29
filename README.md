@@ -17,6 +17,20 @@ still name the cup that hides the ball? We compare five systems on 180 simulated
   separate passes give +0.13 (not significant).
 - **H2** (the advantage grows with the viewpoint change): not supported.
 
+**In short:** a controlled benchmark-design study. Trials are seeded and fully reproducible; pilot and test
+use disjoint seed ranges, and the test protocol was frozen before the test run. Ground truth is read only by
+the evaluation code. All systems receive the same RGB observations; comparisons are paired, with
+Holm-corrected tests and confidence intervals, plus failure analyses for every system
+([RESULTS.md](RESULTS.md), [FINDINGS.md](FINDINGS.md)).
+
+## Contributions
+
+Joint project of Haonan Yin and Joris Köster. All commits in this repository were made by Joris Köster.
+
+<!-- TODO(joris): confirm the split with Haonan before publishing, then replace this list. -->
+- **Haonan Yin:** _to be confirmed_
+- **Joris Köster:** _to be confirmed_
+
 ## Where to start
 
 | File | What it is |
@@ -24,7 +38,7 @@ still name the cup that hides the ball? We compare five systems on 180 simulated
 | [RESULTS.md](RESULTS.md) | Results report: setup, conditions, tables, figures, research questions, related work, limitations |
 | [results/where_did_the_ball_go.html](results/where_did_the_ball_go.html) | Interactive explainer: how each system processes its inputs, a schematic model, an explorer of all 180 trials (open in a browser) |
 | [FINDINGS.md](FINDINGS.md) | Lab notebook: design decisions, pilot findings, failure analyses, protocol deviation |
-| [docs/research_plan_v4.docx](docs/research_plan_v4.docx) | Research plan (v4; earlier draft: `docs/research_plan_v3.docx`). Later design changes are listed below and in FINDINGS.md |
+| [docs/research_plan_v4.md](docs/research_plan_v4.md) | Research plan (v4, out of date). Later design changes are listed below and in FINDINGS.md |
 | [sim/README.md](sim/README.md) | Code documentation: simulation, perception, memories, evaluation |
 | [sim/cluster/CLUSTER.md](sim/cluster/CLUSTER.md) | Running the evaluation on the GPU cluster |
 
@@ -32,7 +46,7 @@ still name the cup that hides the ball? We compare five systems on 180 simulated
 
 ```
 RESULTS.md, FINDINGS.md        results report and lab notebook
-docs/                          research plan drafts (v3, v4)
+docs/                          research plan (v4, out of date)
 results/                       figures, summary.json, HTML report, interactive explainer
 sim/
   run_pilot.py                 record pilot or test trials (disjoint seed ranges)
@@ -79,7 +93,7 @@ The plan document was not updated after the design was tightened. Main differenc
   the frame-based baselines.
 - **VGGT variants:** VGGT is evaluated with separate passes *and* with one joint pass over old and new
   frames.
-- **Simulator:** ManiSkill3 (scene adapted from MIKASA-Robo's ShellGame).
+- **Simulator:** ManiSkill3 (scene adapted from [MIKASA-Robo](https://github.com/CognitiveAISystems/MIKASA-Robo)'s ShellGame, MIT license).
 - **Containers:** inverted mugs ("shell game").
 - **Language models:** Qwen3.5-9B and Qwen3-VL-8B in 8-bit, because the cluster GPU is a 20 GB slice.
 

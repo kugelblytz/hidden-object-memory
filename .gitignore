@@ -1,6 +1,5 @@
 ~$*.docx
 __pycache__/
-.claude/
 *.pt
 *.ts
 

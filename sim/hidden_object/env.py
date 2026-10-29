@@ -6,6 +6,9 @@ Covers, ball and distractors are kinematic: an invisible external actor moves th
 by setting poses, so no physics is stepped. The layout of a trial is passed through
 ``env.reset(options={"reconfigure": True, "trial": trial_dict})``; recording is
 driven from ``trial.py`` via ``place``/``set_camera``/``capture``.
+
+The scene is adapted from the ShellGame task of MIKASA-Robo
+(https://github.com/CognitiveAISystems/MIKASA-Robo, MIT License, Copyright (c) 2026 CognitiveAISystems).
 """
 import numpy as np
 import sapien
