@@ -104,3 +104,8 @@ The plan document was not updated after the design was tightened. Main differenc
 - About 8% of trials fail for every system because of perception errors.
 
 See RESULTS.md, "Limitations and deviations".
+
+## License
+
+[MIT](LICENSE). The hidden-object scene is adapted from MIKASA-Robo's ShellGame (MIT, Copyright (c) 2026
+CognitiveAISystems); see the attribution in `sim/hidden_object/env.py`.
