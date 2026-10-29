@@ -4,6 +4,11 @@ KTH course project by Haonan Yin and Joris Köster. A small ball is hidden under
 then, while nobody watches, the camera moves around the table or one cup is moved. Can a robot memory
 still name the cup that hides the ball? We compare five systems on 180 simulated test trials:
 
+![Trial 37: ball hidden, cup lowered, camera moved 127 degrees, numbered query](docs/images/trial37_camera_move.png)
+*Test trial 37 (identical cups). Only the joint-pass VGGT memory names the right cup; the 2D memory, the
+separate-pass VGGT memory and both vision-language models get it wrong.*
+
+
 | System | Accuracy (chance 0.33) |
 |---|---|
 | VGGT memory, joint pass (old and new frames in one 3D reconstruction) | **0.93** |
@@ -17,11 +22,23 @@ still name the cup that hides the ball? We compare five systems on 180 simulated
   separate passes give +0.13 (not significant).
 - **H2** (the advantage grows with the viewpoint change): not supported.
 
+![Accuracy by size of the camera change](results/fig_accuracy_by_angle.png)
+
+Only the joint VGGT pass stays near 0.9 as the camera change grows; the other memories and the
+keyframe baselines degrade.
+
 **In short:** a controlled benchmark-design study. Trials are seeded and fully reproducible; pilot and test
 use disjoint seed ranges, and the test protocol was frozen before the test run. Ground truth is read only by
 the evaluation code. All systems receive the same RGB observations; comparisons are paired, with
 Holm-corrected tests and confidence intervals, plus failure analyses for every system
 ([RESULTS.md](RESULTS.md), [FINDINGS.md](FINDINGS.md)).
+
+## Example: a cup moved while unobserved
+
+![Trial 8: ball hidden, cup lowered, one cup moved 30 cm, numbered query](docs/images/trial08_cup_move.png)
+*Test trial 8 (identical cups, one cup moved about 30 cm). All three memory systems answer correctly; both
+vision-language models with keyframes do not. More trials, step by step, in the interactive explainer
+[`results/where_did_the_ball_go.html`](results/where_did_the_ball_go.html) (download and open in a browser).*
 
 ## Contributions
 
