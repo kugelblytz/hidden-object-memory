@@ -25,11 +25,7 @@ Holm-corrected tests and confidence intervals, plus failure analyses for every s
 
 ## Contributions
 
-Joint project of Haonan Yin and Joris Köster. All commits in this repository were made by Joris Köster.
-
-<!-- TODO(joris): confirm the split with Haonan before publishing, then replace this list. -->
-- **Haonan Yin:** _to be confirmed_
-- **Joris Köster:** _to be confirmed_
+Joint KTH course project of Haonan Yin and Joris Köster. All commits in this repository were made by Joris Köster.
 
 ## Where to start
 

@@ -6,9 +6,9 @@
 
 # Authors
 
-Haonan Yin \<haonany@kth.se\>
+Haonan Yin
 
-Joris Köster \<jorisk@kth.se\>
+Joris Köster
 
 # Abstract
 
